@@ -1,5 +1,6 @@
 
 import uuid
+import json
 from typing import Dict
 
 from flask import Flask, request
@@ -10,60 +11,63 @@ from api.controller import Analysis
 
 app = Flask(__name__)
 
+@app.route('/', methods=['GET'])
+def index():
+    return {'message': 'Hello World'}
+
 @app.route('/random_forest', methods=['POST'])
 def rf() -> Dict:
     key = uuid.uuid4()
     datum = cluster_vector(request.files)
 
     analysis = Analysis(datum['bio_vector'])
-    bgc_class, probability = analysis.rf_analysis()
+    bgc_class, prob = analysis.rf_analysis()
+
+    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'predicted_class': int(bgc_class[0]), 'pks': prob[0][0], 'nrps': prob[0][1], 'terpene': prob[0][2]}
 
 
-    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'bgc_class': bgc_class, 'prob': probability}
-
-
-@app.route('/adaboost_random_forest', method=['POST'])
-def ada():
+@app.route('/adaboost_random_forest', methods=['POST'])
+def ada() -> Dict:
     key = uuid.uuid4()
     datum = cluster_vector(request.files)
 
     analysis = Analysis(datum['bio_vector'])
-    bgc_class, probability = analysis.ada_analysis()
+    bgc_class, prob = analysis.ada_analysis()
 
-    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'bgc_class': bgc_class, 'prob': probability}
+    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'predicted_class': int(bgc_class[0]), 'pks': prob[0][0], 'nrps': prob[0][1], 'terpene': prob[0][2]}
 
-@app.route('/xgboost', method=['POST'])
-def xgboost():
+@app.route('/xgboost', methods=['POST'])
+def xgboost() -> Dict:
     key = uuid.uuid4()
     datum = cluster_vector(request.files)
 
     analysis = Analysis(datum['bio_vector'])
-    bgc_class, probability = analysis.xg_analysis()
+    bgc_class, prob = analysis.xg_analysis()
 
-    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'bgc_class': bgc_class, 'prob': probability}
+    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'predicted_class': int(bgc_class[0]), 'pks': prob[0][0], 'nrps': prob[0][1], 'terpene': prob[0][2]}
 
-@app.route('/knn', method=['POST'])
-def knn():
+@app.route('/knn', methods=['POST'])
+def knn() -> Dict:
     key = uuid.uuid4()
     datum = cluster_vector(request.files)
 
     analysis = Analysis(datum['bio_vector'])
-    bgc_class, probability = analysis.knn_analysis()
+    bgc_class, prob = analysis.knn_analysis()
 
-    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'bgc_class': bgc_class, 'prob': probability}
+    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'predicted_class': int(bgc_class[0]), 'pks': prob[0][0], 'nrps': prob[0][1], 'terpene': prob[0][2]}
 
-@app.route('/nn', method=['POST'])
-def nn():
+@app.route('/nn', methods=['POST'])
+def nn() -> Dict:
     key = uuid.uuid4()
     datum = cluster_vector(request.files)
 
     analysis = Analysis(datum['bio_vector'])
-    bgc_class, probability = analysis.nn_analysis()
+    bgc_class, prob = analysis.nn_analysis()
 
-    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'bgc_class': bgc_class, 'prob': probability}
+    return {'key': key, 'bio_cluster': datum['bio_cluster'], 'predicted_class': int(bgc_class[0]), 'pks': prob[0][0], 'nrps': prob[0][1], 'terpene': prob[0][2]}
 
 def cluster_vector(files) -> Dict:
-    readGB = ReadGB(files)
+    readGB = ReadGB(files['files'])
     cluster, vector = readGB.get_data()
 
     return {'bio_cluster': cluster, 'bio_vector': vector}

@@ -1,4 +1,6 @@
 
+import io
+
 from os import scandir
 from typing import IO, NamedTuple, List
 from collections import namedtuple
@@ -19,7 +21,7 @@ class ReadGB(object):
 
     file: IO[str]
     cluster: List[Protein] = field(default_factory=list)
-    vector: NDArray = field(default_factory=np.array())
+    vector = np.array([])
     load_models = LoadModels()
 
     def __post_init__(self):
@@ -32,42 +34,42 @@ class ReadGB(object):
         description: str
         seq: str
 
-        records = SeqIO.read(self.file, 'genbank')
+        tmp_file = self.file.read() # self.file is a `BytesIO` object
+
+        # convert to a 'unicode' string object
+        tmp_file = tmp_file.decode() # Or use the encoding you expect
+
 
         biovector = self.load_models.get_nlp()
 
-        for i, record in enumerate(records):
+        #convert to io.StringIO, which I think SeqIO will understand well.
+        records = SeqIO.parse(io.StringIO(tmp_file), 'genbank')
+        for record in records:
+            for feature in record.features:
 
+                if feature.type == 'CDS':
 
-            if record.type == 'CDS':
+                    translation =  feature.qualifiers['translation'][0] if 'translation' in feature.qualifiers else None
+                    locus = feature.qualifiers['locus_tag'][0] if 'locus_tag' in feature.qualifiers else None
+                    prot_id = feature.qualifiers['protein_id'][0] if 'protein_id' in feature.qualifiers else None
+                    product = feature.qualifiers['product'][0] if 'product' in feature.qualifiers else None
+                    description = feature.qualifiers['description'][0] if 'description' in feature.qualifiers else None
+                    gene = feature.qualifiers['gene'][0] if 'gene' in feature.qualifiers else None
 
-                if 'translation' in record.qualifiers:
-                    translation =  record.qualifiers['translation'][0]
-                if 'locus_tag' in record.qualifiers:
-                    locus = record.qualifiers['locus_tag'][0]
-                if 'protein_id' in record.qualifiers:
-                    prot_id = record.qualifiers['protein_id'][0]
-                if 'product' in record.qualifiers:
-                    product = record.qualifiers['product'][0]
-                if 'description' in record.qualifiers:
-                    description = record.qualifiers['description'][0]
-                if 'gene' in record.qualifiers:
-                    gene = record.qualifiers['gene'][0]
+                    strand: int = int(feature.strand)
+                    start, stop = feature.location.start.position, feature.location.end.position
+                    seq: str = record.seq[start:stop]
 
-                strand: int = int(record.strand)
-                start, stop = record.location.start.position, record.location.end.position
-                seq: str = record.seq[start:stop]
+                    p = Protein(gene, prot_id, locus, product, str(seq), translation, [start, stop], strand, description)
 
-                p = Protein(gene, prot_id, locus, product, seq, translation, [start, stop], strand, description)
+                    self.cluster.append(p)
 
-                self.cluster.append(p)
+                    v = np.array(biovector.to_vecs(translation))
 
-                v = biovector.to_vecs(translation)
-
-                if self.vector.size == 0:
-                    self.vector = v
-                else:
-                    self.vector = np.add(v, self.vector)
+                    if self.vector.size == 0:
+                        self.vector = v
+                    else:
+                        self.vector = np.add(v, self.vector)
 
     
     def get_data(self):
@@ -75,17 +77,19 @@ class ReadGB(object):
 
 
 @dataclass
-def Analysis(object):
+class Analysis(object):
 
     vector: NDArray
     load_models = LoadModels()
 
     def __post_init__(self):
-        self.scaler = self.load_models.get_scaler()
-        self.umap = self.load_models.get_umap()
+        scaler = self.load_models.get_scaler()
+        umap = self.load_models.get_umap()
 
         self.vector = self.vector.flatten()
-        self.vector = self.scaler.transform()
+        # self.vector = self.vector.reshape(-1, 1)
+        self.vector = scaler.transform([self.vector])
+        self.vector = umap.transform(self.vector)
 
 
     def rf_analysis(self):
