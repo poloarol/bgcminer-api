@@ -19,6 +19,26 @@ Protein: NamedTuple = namedtuple('protein', 'gene, protein_id, locus_tag, produc
 @dataclass
 class ReadGB(object):
 
+    """
+        Reads a GenBank file and extract information pertaining to each gene.
+            - Name, Product, Protein ID, Locus Tag
+            - DNA Sequence, Protein Sequence
+            - Start, Stop, Coding strand (-1, 1)
+
+        Parameters
+        ----------
+
+        file : IO[str]
+            GenBank file to analyze
+        cluster: List[Protein]
+            List of all proteins in the GenBank file
+        vector: NP Array
+            Vectorial representation of cluster
+        load_models
+            Reference to LoadModels Class
+        
+    """
+
     file: IO[str]
     cluster: List[Protein] = field(default_factory=list)
     vector = np.array([])
@@ -73,11 +93,27 @@ class ReadGB(object):
 
     
     def get_data(self):
+        """
+            Returns all protein information in cluster and vectorial representation of cluster
+        """
         return self.cluster, self.vector
 
 
 @dataclass
 class Analysis(object):
+
+    """
+        Runs the ML predictions.
+        All preprocessing is done in the __post_init__ method
+            converting to 1D array
+            Scaling (RobustScaler)
+            Dimensional Reduction (UMAP)
+
+        Parameter
+        ---------
+
+        vector: numpy array representation of the cluster
+    """
 
     vector: NDArray
     load_models = LoadModels()
@@ -94,6 +130,18 @@ class Analysis(object):
 
     def rf_analysis(self):
 
+        """
+            Predicts the most probable cluster using a Random Forest Classifier
+
+            Returns
+            -------
+
+            bgc_class : int
+                The class in which the cluster belongs
+            probabilities: List
+                Probability of belonging to each class 
+        """
+
         try:
             rf = self.load_models.get_rf()
             bgc_class, probability = rf.predict(self.vector), rf.predict_proba(self.vector)
@@ -103,6 +151,18 @@ class Analysis(object):
             return e
     
     def ada_analysis(self):
+
+        """
+            Predicts the most probable cluster using an AdaBoost + Random Forest Classifier
+
+            Returns
+            -------
+
+            bgc_class : int
+                The class in which the cluster belongs
+            probabilities: List
+                Probability of belonging to each class 
+        """
 
         try:
             ada = self.load_models.get_ada()
@@ -115,6 +175,18 @@ class Analysis(object):
 
     def xg_analysis(self):
 
+        """
+            Predicts the most probable cluster using an XGBoost Classifier
+
+            Returns
+            -------
+
+            bgc_class : int
+                The class in which the cluster belongs
+            probabilities: List
+                Probability of belonging to each class 
+        """
+
         try:
             xgboost = self.load_models.get_xg()
             bgc_class, probability = xgboost.predict(self.vector), xgboost.predict_proba(self.vector)
@@ -124,6 +196,20 @@ class Analysis(object):
             return e
     
     def knn_analysis(self):
+
+        """
+            Predicts the most probable cluster using a k-NN classifier
+
+            Returns
+            -------
+
+            bgc_class : int
+                The class in which the cluster belongs
+            probabilities: List
+                Probability of belonging to each class 
+        """
+
+
         try:
             knn = self.load_models.get_knn()
             bgc_class, probability = knn.predict(self.vector), knn.predict_proba(self.vector)
@@ -133,6 +219,20 @@ class Analysis(object):
             return e
     
     def nn_analysis(self):
+
+        """
+            Predicts the most probable cluster using a Multilayer Perceptron
+
+            Returns
+            -------
+
+            bgc_class : int
+                The class in which the cluster belongs
+            probabilities: List
+                Probability of belonging to each class 
+        """
+
+
         try:
             nn = self.load_models.get_nn()
             bgc_class, probability = nn.predict(self.vector), nn.predict_proba(self.vector)

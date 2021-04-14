@@ -11,6 +11,8 @@ from api.controller import Analysis
 
 app = Flask(__name__)
 
+ALLOWED_EXTENSIONS = {'.gb', '.gbk'}
+
 @app.route('/', methods=['GET'])
 def index():
     return {'message': 'Hello World'}
@@ -66,11 +68,28 @@ def nn() -> Dict:
 
     return {'key': key, 'bio_cluster': datum['bio_cluster'], 'predicted_class': int(bgc_class[0]), 'pks': prob[0][0], 'nrps': prob[0][1], 'terpene': prob[0][2]}
 
-def cluster_vector(files) -> Dict:
-    readGB = ReadGB(files['files'])
-    cluster, vector = readGB.get_data()
 
-    return {'bio_cluster': cluster, 'bio_vector': vector}
+def allowed_extensions(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def cluster_vector(files) -> Dict:
+
+    """ Load GenBank file """
+
+    if 'files' not in files:
+        return request.url
+    
+    file = files['files']
+
+    if file.filename == '':
+        return request.url
+    
+    if file and allowed_extensions(file.filename):
+        readGB = ReadGB(files['files'])
+        cluster, vector = readGB.get_data()
+
+        return {'bio_cluster': cluster, 'bio_vector': vector}
 
 if __name__ == '__main__':
 
